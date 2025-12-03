@@ -1,25 +1,31 @@
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
 const mongoose = require('mongoose');
-
-const convertRouter = require('./routes/convert');
-const historyRouter = require('./routes/history');
+const cors = require('cors');
 
 const app = express();
-app.use(cors());
+
+// Middlewares
 app.use(express.json());
+app.use(cors());
 
-app.use('/api/convert', convertRouter);
-app.use('/api/history', historyRouter);
+// Conectar a MongoDB
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("MongoDB conectado correctamente"))
+  .catch(err => console.error("Error conectando Mongo:", err));
 
+// Rutas (ejemplo)
+app.get('/', (req, res) => {
+  res.send('Servidor backend funcionando');
+});
+
+// Rutas API
+const convertRoute = require('./routes/convert');
+const historyRoute = require('./routes/history');
+
+app.use('/api/convert', convertRoute);
+app.use('/api/history', historyRoute);
+
+// Puerto
 const PORT = process.env.PORT || 4000;
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(()=> {
-    console.log('Mongo conectado');
-    app.listen(PORT, ()=> console.log(`Backend corriendo en puerto ${PORT}`));
-  })
-  .catch(err => {
-    console.error('Error conectando Mongo:', err);
-    process.exit(1);
-  });
+app.listen(PORT, () => console.log(`Servidor escuchando en puerto ${PORT}`));

@@ -15,18 +15,33 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: "Faltan parámetros." });
     }
 
-    // Endpoint oficial de ExchangeRate-API
-    // https://v6.exchangerate-api.com/v6/APIKEY/pair/USD/EUR/100
-    const url = `${API_BASE}/${API_KEY}/pair/${from}/${to}/${amount}`;
+    let rate, result;
 
-    const response = await axios.get(url);
+    // Si no se han configurado API_BASE/API_KEY, usamos exchangerate.host (sin API key)
+    if (!API_BASE || !API_KEY) {
+      const url = `https://api.exchangerate.host/convert?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&amount=${encodeURIComponent(amount)}`;
+      const response = await axios.get(url);
+      if (!response.data || response.data.success === false) {
+        return res.status(500).json({ error: 'Error al obtener conversión desde exchangerate.host' });
+      }
+      rate = response.data.info?.rate ?? null;
+      result = response.data.result;
+      if (rate == null || result == null) {
+        return res.status(500).json({ error: 'Respuesta inválida de la API pública de tasas.' });
+      }
+    } else {
+      // Endpoint oficial de ExchangeRate-API
+      // https://v6.exchangerate-api.com/v6/APIKEY/pair/USD/EUR/100
+      const url = `${API_BASE}/${API_KEY}/pair/${from}/${to}/${amount}`;
+      const response = await axios.get(url);
 
-    if (response.data.result !== "success") {
-      return res.status(500).json({ error: "Error al obtener conversión de la API." });
+      if (!response.data || response.data.result !== "success") {
+        return res.status(500).json({ error: "Error al obtener conversión de la API." });
+      }
+
+      rate = response.data.conversion_rate;
+      result = response.data.conversion_result;
     }
-
-    const rate = response.data.conversion_rate;
-    const result = response.data.conversion_result;
 
     // Guardamos en MongoDB
     const doc = new Conversion({
